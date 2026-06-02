@@ -2,6 +2,7 @@
 Main chat endpoint — orchestrates AI + JIRA calls.
 """
 import json
+import re
 import secrets
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
@@ -211,6 +212,58 @@ async def send_message(
                     settings.FRONTEND_URL,
                 )
             ai_response = "✅ Dashboard creation request sent to Admin. I'll create it once approved."
+
+        elif intent in ("create", "assign", "transition") and jira:
+            # Ask AI to produce the action JSON
+            ai_response = await ai.chat(messages + [{"role": "user", "content": req.message}], jira_context)
+
+            # Extract and execute any ```json``` action block in the response
+            json_match = re.search(r'```json\s*(.*?)\s*```', ai_response, re.DOTALL)
+            if json_match:
+                try:
+                    action_data = json.loads(json_match.group(1))
+                    action = action_data.get("action")
+                    payload = action_data.get("payload", {})
+
+                    if action == "create_issues":
+                        issues = payload if isinstance(payload, list) else payload.get("issues", [payload])
+                        created = jira.create_issue_bulk(issues)
+                        keys = [i.get("key", "") for i in created if i.get("key")]
+                        metadata = {"type": "created_issues", "keys": keys}
+                        ai_response += f"\n\n✅ Created {len(keys)} issue(s) in JIRA: **{', '.join(keys)}**"
+
+                    elif action == "create_project":
+                        result = jira.create_project(payload)
+                        project_key = result.get("key", "")
+                        metadata = {"type": "created_project", "key": project_key}
+                        ai_response += f"\n\n✅ Project **{project_key}** created in JIRA."
+
+                    elif action == "assign_issue":
+                        issue_key = payload.get("issue_key") or entities.get("issue_key")
+                        account_id = payload.get("account_id")
+                        if issue_key and account_id:
+                            jira.assign_issue(issue_key, account_id)
+                            ai_response += f"\n\n✅ Assigned **{issue_key}** successfully."
+
+                    elif action == "transition_issue":
+                        issue_key = payload.get("issue_key") or entities.get("issue_key")
+                        transition_id = payload.get("transition_id")
+                        if issue_key and not transition_id:
+                            # Look up available transitions and find matching one
+                            transitions = jira.get_transitions(issue_key)
+                            target_status = payload.get("status", "")
+                            match = next(
+                                (t for t in transitions if target_status.lower() in t["name"].lower()),
+                                transitions[0] if transitions else None,
+                            )
+                            if match:
+                                transition_id = match["id"]
+                        if issue_key and transition_id:
+                            jira.transition_issue(issue_key, transition_id)
+                            ai_response += f"\n\n✅ Transitioned **{issue_key}** successfully."
+
+                except Exception as ex:
+                    ai_response += f"\n\n⚠️ Could not execute JIRA action: {str(ex)}"
 
         else:
             # General conversation with optional JIRA context

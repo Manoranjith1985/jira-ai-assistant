@@ -38,7 +38,12 @@ export default function SettingsPage() {
     setTesting(true)
     setTestResult(null)
     try {
-      const { data } = await api.post('/settings/test-jira')
+      // Pass current form values so user can test before saving
+      const { data } = await api.post('/settings/test-jira', {
+        jira_base_url: form.jira_base_url || undefined,
+        jira_email: form.jira_email || undefined,
+        jira_api_token: (form.jira_api_token && form.jira_api_token !== '***') ? form.jira_api_token : undefined,
+      })
       setTestResult({ success: true, message: `Connected as ${data.user} (${data.email})` })
     } catch (err) {
       setTestResult({ success: false, message: err.response?.data?.detail || 'Connection failed' })

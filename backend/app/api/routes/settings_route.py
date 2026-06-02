@@ -56,13 +56,30 @@ def update_settings(req: SettingsUpdateRequest, current_user: User = Depends(get
     return {"status": "saved"}
 
 
+class TestJiraRequest(BaseModel):
+    jira_base_url: Optional[str] = None
+    jira_email: Optional[str] = None
+    jira_api_token: Optional[str] = None
+
+
 @router.post("/test-jira")
-def test_jira_connection(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def test_jira_connection(
+    req: TestJiraRequest = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     s = db.query(UserSettings).filter(UserSettings.user_id == current_user.id).first()
-    if not s or not s.jira_base_url or not s.jira_api_token:
-        raise HTTPException(status_code=400, detail="JIRA credentials not configured")
+
+    # Prefer credentials passed in request body; fall back to saved ones
+    base_url = (req and req.jira_base_url) or (s and s.jira_base_url)
+    email = (req and req.jira_email) or (s and s.jira_email) or ""
+    token = (req and req.jira_api_token and req.jira_api_token != "***" and req.jira_api_token) \
+            or (s and s.jira_api_token)
+
+    if not base_url or not token:
+        raise HTTPException(status_code=400, detail="JIRA credentials not configured. Fill in all fields and try again.")
     try:
-        jira = JiraService(s.jira_base_url, s.jira_email, s.jira_api_token)
+        jira = JiraService(base_url, email, token)
         me = jira.get_myself()
         return {"status": "connected", "user": me.get("displayName"), "email": me.get("emailAddress")}
     except Exception as e:
