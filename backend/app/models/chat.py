@@ -25,7 +25,7 @@ class ChatMessage(Base):
     role = Column(String, nullable=False)  # "user" | "assistant"
     content = Column(Text, nullable=False)
     # Structured data attached to message (charts, tables, etc.)
-    metadata = Column(JSON, nullable=True)
+    msg_metadata = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     session = relationship("ChatSession", back_populates="messages")

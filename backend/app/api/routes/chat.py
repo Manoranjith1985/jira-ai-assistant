@@ -78,7 +78,7 @@ def get_messages(session_id: int, current_user: User = Depends(get_current_user)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     return [
-        {"id": m.id, "role": m.role, "content": m.content, "metadata": m.metadata, "created_at": str(m.created_at)}
+        {"id": m.id, "role": m.role, "content": m.content, "metadata": m.msg_metadata, "created_at": str(m.created_at)}
         for m in session.messages
     ]
 
@@ -234,7 +234,7 @@ async def send_message(
         session_id=session.id,
         role="assistant",
         content=ai_response,
-        metadata=metadata if metadata else None,
+        msg_metadata=metadata if metadata else None,
     )
     db.add(assistant_msg)
     db.commit()
@@ -245,6 +245,6 @@ async def send_message(
             "id": assistant_msg.id,
             "role": "assistant",
             "content": ai_response,
-            "metadata": metadata if metadata else None,
+            "metadata": assistant_msg.msg_metadata,
         },
     }
