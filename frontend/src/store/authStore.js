@@ -1,12 +1,23 @@
 import { create } from 'zustand'
 
+const safeGetUser = () => {
+  try {
+    const raw = localStorage.getItem('user')
+    if (!raw || raw === 'undefined') return null
+    return JSON.parse(raw)
+  } catch {
+    localStorage.removeItem('user')
+    return null
+  }
+}
+
 const useAuthStore = create((set) => ({
-  user: JSON.parse(localStorage.getItem('user') || 'null'),
+  user: safeGetUser(),
   token: localStorage.getItem('token') || null,
 
   login: (user, token) => {
-    localStorage.setItem('user', JSON.stringify(user))
-    localStorage.setItem('token', token)
+    if (user) localStorage.setItem('user', JSON.stringify(user))
+    if (token) localStorage.setItem('token', token)
     set({ user, token })
   },
 
