@@ -16,16 +16,16 @@ export default function Login() {
     e.preventDefault()
     setLoading(true)
     try {
-      const form = new URLSearchParams()
-      form.append('username', email)
-      form.append('password', password)
-      const { data } = await api.post('/auth/login', form, {
+      const body = `username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
+      const { data } = await api.post('/auth/login', body, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       })
       login(data.user, data.access_token)
       navigate('/')
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Login failed')
+      const detail = err.response?.data?.detail
+      const msg = Array.isArray(detail) ? detail.map(d => d.msg).join(', ') : (detail || 'Login failed')
+      toast.error(msg)
     } finally {
       setLoading(false)
     }
