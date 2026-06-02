@@ -1,21 +1,34 @@
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from fastapi import Depends
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Keep these so existing imports in auth.py don't break
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return pwd_context.verify(plain, hashed)
+
+def create_access_token(data: dict, expires_delta=None) -> str:
+    return "demo-token"
+
+def decode_token(token: str):
+    return {"sub": "1"}
 
 
 async def get_current_user(db: Session = Depends(get_db)):
-    """Demo mode: no auth required. Returns the first user in the DB."""
+    """Demo mode — no auth required. Returns first user, auto-creates if none."""
     from app.models.user import User
     user = db.query(User).first()
     if not user:
-        # Create a default demo user if none exists
         from app.models.settings import UserSettings
-        from passlib.context import CryptContext
-        pwd = CryptContext(schemes=["bcrypt"], deprecated="auto").hash("demo1234")
         user = User(
             email="demo@jiraai.com",
             full_name="Demo User",
-            hashed_password=pwd,
+            hashed_password=hash_password("demo1234"),
             role="admin",
             is_active=True,
         )
@@ -27,7 +40,6 @@ async def get_current_user(db: Session = Depends(get_db)):
     return user
 
 
-# Keep stubs so imports don't break
 async def require_admin(current_user=Depends(get_current_user)):
     return current_user
 
