@@ -4,7 +4,6 @@ services:
     name: jira-ai-assistant-api
     runtime: python
     region: oregon
-    plan: starter
     buildCommand: pip install -r backend/requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     rootDir: backend
@@ -22,11 +21,10 @@ services:
       - key: DEBUG
         value: false
 
-  # Frontend
+  # Frontend (static site)
   - type: web
     name: jira-ai-assistant-frontend
     runtime: static
-    plan: starter
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
     rootDir: frontend
@@ -40,7 +38,5 @@ services:
 
 databases:
   - name: jira-ai-db
-    region: oregon
-    plan: starter
     databaseName: jira_ai_assistant
     user: jira_ai_user
