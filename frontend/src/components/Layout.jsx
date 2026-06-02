@@ -1,10 +1,9 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink } from 'react-router-dom'
 import {
-  LayoutDashboard, MessageSquare, Users, FolderKanban,
-  CalendarDays, BarChart3, Settings, LogOut, Bot, PlusSquare, ChevronLeft, ChevronRight
+  LayoutDashboard, MessageSquare, FolderKanban,
+  CalendarDays, BarChart3, Settings, Bot, PlusSquare, ChevronLeft, ChevronRight
 } from 'lucide-react'
 import { useState } from 'react'
-import useAuthStore from '../store/authStore'
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -18,13 +17,6 @@ const navItems = [
 
 export default function Layout() {
   const [collapsed, setCollapsed] = useState(false)
-  const { user, logout } = useAuthStore()
-  const navigate = useNavigate()
-
-  const handleLogout = () => {
-    logout()
-    navigate('/login')
-  }
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -57,42 +49,10 @@ export default function Layout() {
               {!collapsed && <span>{label}</span>}
             </NavLink>
           ))}
-
-          {user?.role === 'admin' && (
-            <NavLink
-              to="/users"
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive ? 'bg-primary-50 text-primary-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`
-              }
-            >
-              <Users className="w-5 h-5 flex-shrink-0" />
-              {!collapsed && <span>User Management</span>}
-            </NavLink>
-          )}
         </nav>
 
-        {/* User + collapse */}
-        <div className="border-t border-gray-100 p-3 space-y-1">
-          {!collapsed && (
-            <div className="flex items-center gap-2 px-2 py-2">
-              <div className="w-7 h-7 bg-primary-100 rounded-full flex items-center justify-center text-xs font-bold text-primary-700">
-                {user?.full_name?.[0]?.toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-gray-900 truncate">{user?.full_name}</p>
-                <p className="text-xs text-gray-400 capitalize">{user?.role}</p>
-              </div>
-            </div>
-          )}
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2 w-full rounded-lg text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors"
-          >
-            <LogOut className="w-4 h-4 flex-shrink-0" />
-            {!collapsed && <span>Logout</span>}
-          </button>
+        {/* Collapse button */}
+        <div className="border-t border-gray-100 p-3">
           <button
             onClick={() => setCollapsed(!collapsed)}
             className="flex items-center gap-3 px-3 py-2 w-full rounded-lg text-sm text-gray-400 hover:bg-gray-50 transition-colors"
