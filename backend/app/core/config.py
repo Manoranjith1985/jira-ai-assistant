@@ -13,12 +13,12 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/jira_ai_assistant"
 
-    # JIRA (stored per-user in DB; these are defaults/fallback)
+    # JIRA (set via Render environment variables)
     JIRA_BASE_URL: Optional[str] = None
     JIRA_EMAIL: Optional[str] = None
     JIRA_API_TOKEN: Optional[str] = None
 
-    # OpenAI (stored per-user in Settings page)
+    # OpenAI (set via Render environment variables)
     OPENAI_API_KEY: Optional[str] = None
 
     # Email (for approval workflows)

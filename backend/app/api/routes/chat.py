@@ -34,19 +34,19 @@ class SessionResponse(BaseModel):
 
 
 def _get_jira(user_settings: UserSettings) -> Optional[JiraService]:
-    if user_settings and user_settings.jira_base_url and user_settings.jira_api_token:
-        return JiraService(
-            user_settings.jira_base_url,
-            user_settings.jira_email or "",
-            user_settings.jira_api_token,
-        )
+    base_url = (user_settings and user_settings.jira_base_url) or settings.JIRA_BASE_URL
+    email    = (user_settings and user_settings.jira_email) or settings.JIRA_EMAIL or ""
+    token    = (user_settings and user_settings.jira_api_token) or settings.JIRA_API_TOKEN
+    if base_url and token:
+        return JiraService(base_url, email, token)
     return None
 
 
 def _get_ai(user_settings: UserSettings) -> Optional[AIService]:
     api_key = (user_settings and user_settings.openai_api_key) or settings.OPENAI_API_KEY
+    model   = (user_settings and user_settings.ai_model) or "gpt-4o"
     if api_key:
-        return AIService(api_key, model=getattr(user_settings, "ai_model", "gpt-4o") or "gpt-4o")
+        return AIService(api_key, model=model)
     return None
 
 
