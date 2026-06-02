@@ -17,7 +17,7 @@ services:
       - key: ENCRYPTION_KEY
         generateValue: true
       - key: FRONTEND_URL
-        value: https://jira-ai-assistant-frontend.onrender.com
+        value: https://jira-ai-assistant-frontend-sb6u.onrender.com
       - key: DEBUG
         value: false
 
@@ -34,7 +34,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        value: https://jira-ai-assistant-api.onrender.com
+        value: https://jira-ai-assistant-api-sb6u.onrender.com
 
 databases:
   - name: jira-ai-db
