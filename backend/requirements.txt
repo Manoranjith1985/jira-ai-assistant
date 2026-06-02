@@ -13,7 +13,5 @@ pydantic==2.7.1
 pydantic-settings==2.2.1
 sendgrid==6.11.0
 aiosmtplib==3.0.1
-cryptography==42.0.7
 email-validator==2.1.1
-redis==5.0.4
-celery==5.4.0
+cryptography==42.0.7
