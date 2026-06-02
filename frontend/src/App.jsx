@@ -14,10 +14,8 @@ import SettingsPage from './pages/Settings'
 import ApprovalHandler from './pages/ApprovalHandler'
 import ProjectCreator from './pages/ProjectCreator'
 
-function PrivateRoute({ children, adminOnly = false }) {
-  const { user, token } = useAuthStore()
-  if (!token) return <Navigate to="/login" replace />
-  if (adminOnly && user?.role !== 'admin') return <Navigate to="/" replace />
+// Auth bypassed for demo — all routes accessible
+function PrivateRoute({ children }) {
   return children
 }
 
@@ -26,8 +24,8 @@ export default function App() {
     <BrowserRouter>
       <Toaster position="top-right" />
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Navigate to="/" replace />} />
+        <Route path="/register" element={<Navigate to="/" replace />} />
         <Route path="/approve/:token" element={<ApprovalHandler />} />
 
         <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
