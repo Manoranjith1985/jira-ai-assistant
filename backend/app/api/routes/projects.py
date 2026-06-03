@@ -97,16 +97,23 @@ async def create_from_structure(
     structure = req.structure
     project_key = structure.get("project_key", "PROJ")
 
-    # 1. Create project
+    # 1. Resolve project lead — use provided ID or fall back to current JIRA user
+    lead_id = req.lead_account_id
+    if not lead_id:
+        try:
+            myself = jira.get_myself()
+            lead_id = myself.get("accountId", "")
+        except Exception:
+            pass
+
     project_payload = {
         "key": project_key,
         "name": structure.get("project_name", "New Project"),
         "description": structure.get("description", ""),
         "projectTypeKey": "software",
         "projectTemplateKey": "com.pyxis.greenhopper.jira:gh-scrum-template",
+        "leadAccountId": lead_id,
     }
-    if req.lead_account_id:
-        project_payload["leadAccountId"] = req.lead_account_id
 
     try:
         created_project = jira.create_project(project_payload)
