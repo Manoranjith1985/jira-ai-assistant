@@ -71,19 +71,22 @@ class JiraService:
             return {"status": "assigned"}
 
     def search_issues(self, jql: str, max_results: int = 50) -> Dict:
+        """Search using the new /rest/api/3/search/jql endpoint (replaces deprecated /rest/api/3/issue/search)."""
+        fields = "summary,status,assignee,priority,issuetype,project,created,updated"
         with self._client() as c:
             r = c.get(
-                f"{self.base_url}/rest/api/3/issue/search",
-                params={"jql": jql, "maxResults": max_results},
+                f"{self.base_url}/rest/api/3/search/jql",
+                params={"jql": jql, "maxResults": max_results, "fields": fields},
             )
-            # Don't raise on 4xx — JIRA returns 400/404 for no-results or empty projects
             if r.status_code >= 500:
                 r.raise_for_status()
             body = r.json()
-            # If JIRA returned an error body, treat as empty result set
-            if "errorMessages" in body or "errors" in body:
+            if "errorMessages" in body or ("errors" in body and body.get("errors")):
                 return {"total": 0, "issues": [], "startAt": 0, "maxResults": max_results}
-            return body
+            # New API uses isLast instead of total — compute total from issues length
+            issues = body.get("issues", [])
+            total = body.get("total", len(issues))
+            return {"total": total, "issues": issues, "startAt": 0, "maxResults": max_results}
 
     def get_transitions(self, issue_key: str) -> List[Dict]:
         with self._client() as c:
