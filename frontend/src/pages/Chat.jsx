@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Send, Plus, Trash2, Bot, User, BarChart3 } from 'lucide-react'
+import { Send, Plus, Trash2, Bot, User, BarChart3, Mic, MicOff } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Bar, Line, Pie } from 'react-chartjs-2'
@@ -69,7 +69,34 @@ export default function Chat() {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [listening, setListening] = useState(false)
+  const recognitionRef = useRef(null)
   const messagesEndRef = useRef(null)
+
+  const toggleVoice = useCallback(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognition) { toast.error('Voice not supported in this browser'); return }
+
+    if (listening) {
+      recognitionRef.current?.stop()
+      setListening(false)
+      return
+    }
+
+    const rec = new SpeechRecognition()
+    rec.lang = 'en-US'
+    rec.continuous = false
+    rec.interimResults = false
+    rec.onstart = () => setListening(true)
+    rec.onresult = (e) => {
+      const transcript = e.results[0][0].transcript
+      setInput(prev => (prev ? prev + ' ' : '') + transcript)
+    }
+    rec.onerror = () => { toast.error('Voice recognition error'); setListening(false) }
+    rec.onend = () => setListening(false)
+    recognitionRef.current = rec
+    rec.start()
+  }, [listening])
 
   useEffect(() => {
     api.get('/chat/sessions').then(({ data }) => setSessions(data)).catch(() => {})
@@ -217,6 +244,13 @@ export default function Chat() {
               rows={1}
               className="flex-1 resize-none bg-transparent px-3 py-2 text-sm focus:outline-none text-gray-900 placeholder-gray-400"
             />
+            <button
+              onClick={toggleVoice}
+              title={listening ? 'Stop listening' : 'Voice input'}
+              className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors flex-shrink-0 ${listening ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-gray-100 hover:bg-gray-200'}`}
+            >
+              {listening ? <MicOff className="w-4 h-4 text-white" /> : <Mic className="w-4 h-4 text-gray-600" />}
+            </button>
             <button
               onClick={() => sendMessage()}
               disabled={loading || !input.trim()}

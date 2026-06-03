@@ -140,10 +140,11 @@ async def create_from_structure(
                     "summary": story["name"],
                     "description": {"type": "doc", "version": 1, "content": [{"type": "paragraph", "content": [{"type": "text", "text": story.get("description", "")}]}]},
                     "issuetype": {"name": "Story"},
-                    "customfield_10014": epic_key,  # Epic Link
+                    # Epic link omitted — requires Premium plan
                 }
             })
             story_key = story_issue.get("key")
+            created_issues.append(story_key)
 
             for task in story.get("tasks", []):
                 task_issue = jira.create_issue({
@@ -151,20 +152,10 @@ async def create_from_structure(
                         "project": {"key": project_key},
                         "summary": task["name"],
                         "issuetype": {"name": "Task"},
-                        "parent": {"key": story_key},
+                        # parent omitted — requires Premium plan
                     }
                 })
                 task_key = task_issue.get("key")
-
-                for subtask_name in task.get("subtasks", []):
-                    jira.create_issue({
-                        "fields": {
-                            "project": {"key": project_key},
-                            "summary": subtask_name,
-                            "issuetype": {"name": "Sub-task"},
-                            "parent": {"key": task_key},
-                        }
-                    })
                 created_issues.append(task_key)
 
     return {
