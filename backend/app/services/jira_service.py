@@ -76,8 +76,14 @@ class JiraService:
                 f"{self.base_url}/rest/api/3/issue/search",
                 params={"jql": jql, "maxResults": max_results},
             )
-            r.raise_for_status()
-            return r.json()
+            # Don't raise on 4xx — JIRA returns 400/404 for no-results or empty projects
+            if r.status_code >= 500:
+                r.raise_for_status()
+            body = r.json()
+            # If JIRA returned an error body, treat as empty result set
+            if "errorMessages" in body or "errors" in body:
+                return {"total": 0, "issues": [], "startAt": 0, "maxResults": max_results}
+            return body
 
     def get_transitions(self, issue_key: str) -> List[Dict]:
         with self._client() as c:
