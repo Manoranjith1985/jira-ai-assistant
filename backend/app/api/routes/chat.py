@@ -133,11 +133,21 @@ async def send_message(
     history.reverse()
     messages = [{"role": m.role, "content": m.content} for m in history]
 
-    # Parse intent
-    intent_data = await ai.parse_chat_intent(req.message)
+    # Fetch JIRA project list to give AI correct context
+    jira_projects_context = ""
+    if jira:
+        try:
+            projects = jira.get_projects()
+            proj_list = ", ".join([f"{p['name']} (key: {p['key']})" for p in projects])
+            jira_projects_context = f"Available JIRA projects: {proj_list}"
+        except Exception:
+            pass
+
+    # Parse intent — pass project context so AI uses correct keys
+    intent_data = await ai.parse_chat_intent(req.message, context=jira_projects_context)
     intent = intent_data.get("intent", "general")
     entities = intent_data.get("entities", {})
-    jira_context = ""
+    jira_context = jira_projects_context
     metadata = {}
 
     # ─── Handle intent ────────────────────────────────────────────────────────
@@ -149,32 +159,41 @@ async def send_message(
                 jira_context = json.dumps(result, indent=2)[:3000]
                 ai_response = await ai.summarize_jira_data(result, req.message)
             except Exception as jira_err:
-                # JIRA call failed — fall back to AI with error context
+                # JIRA query failed — let AI answer with project context
                 ai_response = await ai.chat(
                     messages + [{"role": "user", "content": req.message}],
-                    f"Note: JIRA query failed ({jira_err}). Answer from general knowledge or ask user to check Settings."
+                    f"{jira_projects_context}\nNote: JIRA query failed ({jira_err}). Use the project keys above for future queries."
                 )
 
         elif intent == "analytics" and jira:
             project_key = entities.get("project_key")
-            chart_type = entities.get("chart_type", "bar")
-            boards = jira.get_boards(project_key) if project_key else []
-            if boards:
-                board_id = boards[0]["id"]
-                sprints = jira.get_sprints(board_id)
-                if sprints:
-                    sprint_id = sprints[0]["id"]
-                    if "burndown" in req.message.lower():
-                        raw_data = jira.get_burndown(board_id, sprint_id)
-                    else:
-                        raw_data = jira.get_velocity(board_id)
-                    chart_data = await ai.generate_chart_data(raw_data, chart_type, req.message)
-                    metadata = {"type": "chart", "chart_type": chart_type, "chart_data": chart_data, "title": req.message}
-                    ai_response = f"Here's the {chart_type} chart for your query."
-                else:
-                    ai_response = "No active sprints found for this project."
-            else:
-                ai_response = "Could not find board for this project. Please specify the project key."
+            try:
+                # Use issue/search to build analytics data — works on free plan
+                jql_base = f"project = {project_key}" if project_key else "project is not EMPTY"
+                statuses = ["To Do", "In Progress", "Done"]
+                counts = {}
+                for status in statuses:
+                    try:
+                        r = jira.search_issues(f"{jql_base} AND status = \"{status}\"", max_results=1)
+                        counts[status] = r.get("total", 0)
+                    except Exception:
+                        counts[status] = 0
+                chart_data = {
+                    "labels": list(counts.keys()),
+                    "datasets": [{"label": "Issues by Status", "data": list(counts.values()),
+                                  "backgroundColor": ["#6366f1", "#f59e0b", "#10b981"]}]
+                }
+                metadata = {"type": "chart", "chart_type": "bar", "chart_data": chart_data,
+                            "title": f"Issue Status for {project_key or 'All Projects'}"}
+                total = sum(counts.values())
+                ai_response = f"Here's the issue status breakdown{' for ' + project_key if project_key else ''}:\n\n" + \
+                              "\n".join([f"- **{k}**: {v}" for k, v in counts.items()]) + \
+                              f"\n\n**Total: {total} issues**"
+            except Exception as e:
+                ai_response = await ai.chat(
+                    messages + [{"role": "user", "content": req.message}],
+                    f"{jira_projects_context}\nNote: analytics query failed ({e})."
+                )
 
         elif intent == "access_request":
             token = secrets.token_urlsafe(32)
@@ -273,11 +292,11 @@ async def send_message(
                     ai_response += f"\n\n⚠️ Could not execute JIRA action: {str(ex)}"
 
         else:
-            # General conversation with optional JIRA context
+            # General conversation — always pass project context
             if jira and entities.get("issue_key"):
                 try:
                     issue = jira.get_issue(entities["issue_key"])
-                    jira_context = json.dumps(issue, indent=2)[:2000]
+                    jira_context = jira_projects_context + "\n" + json.dumps(issue, indent=2)[:2000]
                 except Exception:
                     pass
             ai_response = await ai.chat(messages + [{"role": "user", "content": req.message}], jira_context)
