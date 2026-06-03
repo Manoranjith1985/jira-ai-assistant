@@ -144,9 +144,16 @@ async def send_message(
     try:
         if intent in ("query",) and jira and intent_data.get("jira_jql"):
             jql = intent_data["jira_jql"]
-            result = jira.search_issues(jql)
-            jira_context = json.dumps(result, indent=2)[:3000]
-            ai_response = await ai.summarize_jira_data(result, req.message)
+            try:
+                result = jira.search_issues(jql)
+                jira_context = json.dumps(result, indent=2)[:3000]
+                ai_response = await ai.summarize_jira_data(result, req.message)
+            except Exception as jira_err:
+                # JIRA call failed — fall back to AI with error context
+                ai_response = await ai.chat(
+                    messages + [{"role": "user", "content": req.message}],
+                    f"Note: JIRA query failed ({jira_err}). Answer from general knowledge or ask user to check Settings."
+                )
 
         elif intent == "analytics" and jira:
             project_key = entities.get("project_key")
