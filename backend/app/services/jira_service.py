@@ -71,11 +71,10 @@ class JiraService:
             return {"status": "assigned"}
 
     def search_issues(self, jql: str, max_results: int = 50) -> Dict:
-        fields = "summary,status,assignee,priority,issuetype,created,updated,parent,subtasks"
         with self._client() as c:
             r = c.get(
                 f"{self.base_url}/rest/api/3/issue/search",
-                params={"jql": jql, "maxResults": max_results, "fields": fields},
+                params={"jql": jql, "maxResults": max_results},
             )
             r.raise_for_status()
             return r.json()
