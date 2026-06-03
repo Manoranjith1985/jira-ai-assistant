@@ -14,11 +14,11 @@ import api from '../api/client'
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Title, Tooltip, Legend)
 
 const SUGGESTIONS = [
-  'What is the status of my current sprint?',
-  'Show workload distribution for project PROJ',
+  'List all open issues in project CRM',
+  'Show me all issues assigned to me',
   'Create a project for an e-commerce platform',
-  'List all open bugs in project ABC',
-  'Show velocity chart for board 1',
+  'List all high priority issues in project CRM',
+  'What issues were updated this week?',
 ]
 
 function ChartMessage({ metadata }) {
