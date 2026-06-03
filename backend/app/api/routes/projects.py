@@ -118,7 +118,15 @@ async def create_from_structure(
     try:
         created_project = jira.create_project(project_payload)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Project creation failed: {str(e)}")
+        err_str = str(e)
+        if "already exists" in err_str or "uses this project key" in err_str:
+            # Project exists — fetch it and continue adding issues
+            try:
+                created_project = jira.get_project(project_key)
+            except Exception:
+                raise HTTPException(status_code=400, detail=f"Project creation failed: {err_str}")
+        else:
+            raise HTTPException(status_code=400, detail=f"Project creation failed: {err_str}")
 
     created_issues = []
     for epic in structure.get("epics", []):
